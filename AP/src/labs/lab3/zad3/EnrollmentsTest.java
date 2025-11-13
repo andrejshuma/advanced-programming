@@ -1,136 +1,247 @@
 package labs.lab3.zad3;
 
+
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 // TODO: Add classes and implement methods
-class Applicant{
-    int id;
-    String name;
-    Double gpa;
-    List<SubjectWithGrade> subjectsWithGrades;
-    StudyProgramme studyProgramme;
+class ApplicantComparator implements Comparator<Applicant>{
 
-    public Applicant(int id, String name, Double gpa, StudyProgramme studyProgramme) {
-        this.id = id;
-        this.name = name;
-        this.gpa = gpa;
-        this.studyProgramme = studyProgramme;
-        this.subjectsWithGrades = new ArrayList<>();
+    @Override
+    public int compare(Applicant o1, Applicant o2) {
+        if (o1.calculatePoints()!=o2.calculatePoints()){
+            return Double.compare(o2.calculatePoints(),o1.calculatePoints());
+        }else{
+            return Integer.compare(o2.getAppropriateCounter(),o1.getAppropriateCounter());
+        }
     }
-    public double calculatePoints(){
-        double result = gpa* 12;
-        for (SubjectWithGrade subjectWithGrade : subjectsWithGrades) {
-            if(this.studyProgramme.faculty.appropriateSubjects.contains(subjectWithGrade.getSubject())){
-                result += subjectWithGrade.getGrade() * 2;
+}
+
+class Applicant{
+    private int id;
+    private String name;
+    private double gpa;
+    private List<SubjectWithGrade>subjectsWithGrades;
+    private StudyProgramme studyProgramme;
+    private int appropriateCounter;
+
+    public Applicant(int id,String name,double gpa,StudyProgramme studyProgramme){
+        this.id=id;
+        this.name=name;
+        this.gpa=gpa;
+        this.subjectsWithGrades=new ArrayList<>();
+        this.studyProgramme=studyProgramme;
+        this.appropriateCounter=0;
+    }
+
+    public void addSubjectAndGrade(String subject, int grade){
+        subjectsWithGrades.add(new SubjectWithGrade(subject,grade));
+    }
+
+    public int getAppropriateCounter() {
+        return appropriateCounter;
+    }
+
+    public double calculatePoints() {
+        double points = 0;
+        int appropriateSubjectsCounter = 0;
+        List<String> appropriateSubjects = studyProgramme.getFaculty().getAppropriateSubjects();
+
+        for (SubjectWithGrade swg : subjectsWithGrades) {
+            if (appropriateSubjects.contains(swg.getSubject())) {
+                points += swg.getGrade() * 2;
+                appropriateSubjectsCounter++;
             } else {
-                result += subjectWithGrade.getGrade() * 1.2;
+                points += swg.getGrade() * 1.2;
             }
         }
-        return result;
-    }
-    public void addSubjectAndGrade(String subject, int grade){
-        subjectsWithGrades.add(new SubjectWithGrade(subject, grade));
-    }
-
-}
-class StudyProgramme{
-    String code;
-    String name;
-    int numPublicQuota;
-    int numPrivateQuota;
-    int enrolledInPublicQuota;
-    int enrolledInPrivateQuota;
-    Faculty faculty;
-    List<Applicant> applicants;
-
-    public StudyProgramme(String code, String name,Faculty faculty, int numPublicQuota, int numPrivateQuota) {
-        this.code = code;
-        this.name = name;
-        this.faculty = faculty;
-        this.numPublicQuota = numPublicQuota;
-        this.numPrivateQuota = numPrivateQuota;
-        this.applicants = new ArrayList<>();
-    }
-
-    public void calculateEnrollmentNumbers(){
-        applicants.sort(Comparator.comparingDouble(Applicant::calculatePoints).reversed());
-        this.enrolledInPublicQuota = Math.min(numPublicQuota, applicants.size());
-        this.enrolledInPrivateQuota = Math.min(numPrivateQuota, applicants.size() - enrolledInPublicQuota);
+        points += gpa * 12;
+        return points;
     }
 
     @Override
     public String toString() {
-        //Да се преоптовари toString() така што ќе ги прикаже:
-        //
-        //името на програмата
-        //сите апликанти примени во државна квота
-        //сите апликанти примени во приватна квота
-        //сите одбиени апликанти
+        StringBuilder sb=new StringBuilder();
+        //Id: 7, Name: Ivana, GPA: 4.6 - 89.19999999999999
+        return "Id: "+id+", Name: "+name+", GPA: "+gpa+" - "+calculatePoints()+"\n";
+
+    }
+}
+
+class StudyProgramme implements Comparable<StudyProgramme>{
+
+    private String code;
+    private String name;
+    private int numPublicQuota;
+    private int numPrivateQuota;
+    private int enrolledInPublicQuota;
+    private int enrolledInPrivateQuota;
+    private List<Applicant>applicants;
+    private Faculty faculty;
+    private List<Applicant>publicQuota;
+    private List<Applicant>privateQuota;;
+    private int rejected;
+
+
+    public StudyProgramme(String code,String name,Faculty faculty,int numPrivateQuota,int numPublicQuota){
+        this.code=code;
+        this.name=name;
+        this.faculty=faculty;
+        this.numPrivateQuota=numPrivateQuota;
+        this.numPublicQuota=numPublicQuota;
+        this.enrolledInPrivateQuota=0;
+        this.enrolledInPublicQuota=0;
+        this.publicQuota=new ArrayList<>();
+        this.privateQuota=new ArrayList<>();
+        this.rejected=0;
+        this.applicants=new ArrayList<>();
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void addApplicant(Applicant applicant){
+
+        applicants.add(applicant);
+    }
+
+    public int getNumPublicQuota() {
+        return numPublicQuota;
+    }
+
+    public int getNumPrivateQuota() {
+        return numPrivateQuota;
+    }
+
+    public int getEnrolledInPublicQuota() {
+        return enrolledInPublicQuota;
+    }
+
+    public int getEnrolledInPrivateQuota() {
+        return enrolledInPrivateQuota;
+    }
+
+    public List<Applicant> getApplicants() {
+        return applicants;
+    }
+
+    public double getScore(){
         calculateEnrollmentNumbers();
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format("Name: %s\n", name));
-        sb.append("Public quota:\n");
-        for (int i = 0; i < enrolledInPublicQuota; i++) {
-            //Id: 1, Name: Ana, GPA: 4.9 - 93.6
-            Applicant applicant = applicants.get(i);
-            sb.append(String.format("Id: %d, Name: %s, GPA:  %.2f - %.1f\n", applicant.id, applicant.name,applicant.gpa, applicant.calculatePoints()));
-        }
+        double sum1= enrolledInPrivateQuota+ enrolledInPublicQuota;
+        double sum2= numPublicQuota+ numPrivateQuota;
+        return (sum1/sum2)*100;
+    }
 
-        sb.append("Accepted applicants (private quota):\n");
-        for (int i = enrolledInPublicQuota; i < enrolledInPublicQuota + enrolledInPrivateQuota; i++) {
-            Applicant applicant = applicants.get(i);
-            sb.append(String.format("Id: %d, Name: %s, GPA:  %.2f - %.1f\n", applicant.id, applicant.name,applicant.gpa, applicant.calculatePoints()));
-        }
+    public Faculty getFaculty() {
+        return faculty;
+    }
 
+    public void calculateEnrollmentNumbers(){
+        int appSize=applicants.size();
+        if (appSize-numPublicQuota<0){
+            this.enrolledInPublicQuota=appSize;
+            return;
+        }else{
+            this.enrolledInPublicQuota=numPublicQuota;
+        }
+        int rest=appSize-enrolledInPublicQuota;
+        if (rest-numPrivateQuota<0){
+            this.enrolledInPrivateQuota=rest;
+            return;
+        }else{
+            this.enrolledInPrivateQuota=numPrivateQuota;
+        }
+        this.rejected= appSize-(enrolledInPrivateQuota+enrolledInPublicQuota);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb=new StringBuilder();
+        sb.append(String.format("Name: %s\n",name));
+        calculateEnrollmentNumbers();
+        applicants.sort(new ApplicantComparator());
+        sb.append("Public Quota:\n");
+        int i,j,k;
+        for (i = 0; i < enrolledInPublicQuota; i++) {
+            sb.append(applicants.get(i).toString());
+        }
+        sb.append("Private Quota:\n");
+        for ( j = 0; j< enrolledInPrivateQuota; j++) {
+            sb.append(applicants.get(i++).toString());
+        }
         sb.append("Rejected:\n");
-        for (int i = enrolledInPublicQuota + enrolledInPrivateQuota; i < applicants.size(); i++) {
-            Applicant applicant = applicants.get(i);
-            sb.append(String.format("Id: %d, Name: %s, GPA:  %.2f - %.1f\n", applicant.id, applicant.name,applicant.gpa, applicant.calculatePoints()));
+
+        for ( k = 0; k <rejected; k++) {
+            sb.append(applicants.get(i++).toString());
         }
 
         return sb.toString();
     }
+
+    @Override
+    public int compareTo(StudyProgramme o) {
+        return Double.compare(o.getScore(),this.getScore());
+    }
 }
 
-class Faculty{
-    String shortName;
-    List<String>  appropriateSubjects;
-    List<StudyProgramme> studyProgrammes;
 
-    public Faculty(String shortName) {
-        this.shortName = shortName;
-        this.appropriateSubjects = new ArrayList<>();
-        this.studyProgrammes = new ArrayList<>();
+class Faculty{
+    private String shortName;
+    private List<String>appropriateSubjects;
+    private List<StudyProgramme> studyProgrammes;
+
+    public Faculty(String shortName){
+        this.shortName=shortName;
+        this.appropriateSubjects=new ArrayList<>();
+        this.studyProgrammes=new ArrayList<>();
+
     }
-    public void addSubject(String subject){
-        appropriateSubjects.add(subject);
+
+    public void addSubject(String s){
+        appropriateSubjects.add(s);
     }
     public void addStudyProgramme(StudyProgramme studyProgramme){
         studyProgrammes.add(studyProgramme);
     }
+
+    public List<String> getAppropriateSubjects() {
+        return appropriateSubjects;
+    }
+
     @Override
     public String toString() {
-        //toString методот кој ќе ги печати сите студиски програми и апликанти на факултетот според следните критериуми:
-        //
-        //бројот на соодветни предмети на факултетот во растечки редослед
-        //процентот на примени студенти во една студиска програма во опаѓачки редослед
-        //((број запишани на државна квота + број запишани на приватна квота) / (број на места на државна квота + број на места на приватна квота )) * 100
-        //поените на студентот во опаѓачки редослед
+        StringBuilder sb=new StringBuilder();
+        sb.append(String.format("Faculty: %s\n",shortName));
+        sb.append("Subjects: [");
+        for (int i = 0; i < appropriateSubjects.size(); i++) {
+            sb.append(appropriateSubjects.get(i));
+            if (i!=appropriateSubjects.size()-1){
+                sb.append(", ");
+            }
+        }
+        sb.append("]\n");
+        sb.append("Study Programmes: \n");
+        studyProgrammes.sort(Comparator.naturalOrder());
+        for (StudyProgramme s:studyProgrammes){
+            sb.append(s.toString());
+            sb.append("\n");
+        }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format("Faculty: %s\n", shortName));
-        List<StudyProgramme> sortedProgrammes = studyProgrammes.stream()
-                .sorted(Comparator.comparingDouble(sp -> -((double)(sp.enrolledInPublicQuota + sp.enrolledInPrivateQuota) / (sp.numPublicQuota + sp.numPrivateQuota))))
-                .collect(Collectors.toList());
+        return sb.toString();
 
 
     }
 }
+
+
 class SubjectWithGrade
 {
     private String subject;
@@ -145,86 +256,69 @@ class SubjectWithGrade
     public int getGrade() {
         return grade;
     }
+
+
+
+
+
 }
 
 class Enrollment{
-    Applicant applicant;
-    StudyProgramme studyProgramme;
+
+    private Applicant applicant;
+    private StudyProgramme studyProgramme;
 
     public Enrollment(Applicant applicant, StudyProgramme studyProgramme) {
         this.applicant = applicant;
         this.studyProgramme = studyProgramme;
     }
-
-
 }
 
 class EnrollmentsIO {
-    //Да се имплементираат двата методи во класата EnrollmentsIO кои служат за внесување и печатење на податоците.
-    //
-    //Методот readEnrollments:
-    //
-    //како аргументи добива листа од студиски програми и InputStream
-    //ја пребарува студиската програма во листата на студиски програми според кодот од внесот
-    //го креира објектот од тип Applicant, ги поставува атрибутите и го додава во листата на апликанти на соодветната студиска програма
-    //Форматот за внес е следниот:
-    //
-    //id;name;gpa;subject1:grade1;subject2:grade2;subject3:grade3;subject4:grade4;studyProgrammeCode
-    //
-    //каде id е идентификаторот на апликантот, name e името на апликантот, gpa е просекот на апликантот, subjectN и gradeN се предметите кои ги полагал на матурскиот испит и studyProgrammeCode е студиската програма на која сака да се запише.
-    //
-    //Методот printRanked:
-    //
-    //како аргумент добива листа од факултети
-    //ги печати сите факултети според формат кој е достапен во тест примерите и според критериумот кој е зададен во текстот.
     public static void printRanked(List<Faculty> faculties) {
-        List<Faculty> sortedFaculties = faculties.stream()
-                .sorted(Comparator.comparing(faculty -> faculty.shortName))
-                .collect(Collectors.toList());
 
-        for (Faculty faculty : sortedFaculties) {
-            System.out.println(faculty.toString());
+        for (Faculty f:faculties){
+            System.out.print(f.toString());
         }
     }
 
-    public static List<Enrollment> readEnrollments(List<StudyProgramme> studyProgrammes, InputStream inputStream) {
-        List<Enrollment> enrollments = new ArrayList<>();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+    public static List<Enrollment> readEnrollments(List<StudyProgramme> studyProgrammes, InputStream inputStream) throws IOException {
+        BufferedReader reader=new BufferedReader(new InputStreamReader(inputStream));
         String line;
-        try {
-            while ((line = reader.readLine()) != null && !line.trim().isEmpty()) {
-                String[] parts = line.split(";");
-                int id = Integer.parseInt(parts[0]);
-                String name = parts[1];
-                Double gpa = Double.parseDouble(parts[2]);
-                String studyProgrammeCode = parts[parts.length - 1];
+        List<Enrollment>enrollments=new ArrayList<>();
+        while ((line=reader.readLine())!=null){
 
-                StudyProgramme studyProgramme = studyProgrammes.stream()
-                        .filter(sp -> sp.code.equals(studyProgrammeCode))
-                        .findFirst()
-                        .orElse(null);
 
-                if (studyProgramme != null) {
-                    Applicant applicant = new Applicant(id, name, gpa, studyProgramme);
-                    for (int i = 3; i < parts.length - 1; i++) {
-                        String[] subjectGrade = parts[i].split(":");
-                        String subject = subjectGrade[0];
-                        int grade = Integer.parseInt(subjectGrade[1]);
-                        applicant.addSubjectAndGrade(subject, grade);
-                    }
-                    studyProgramme.applicants.add(applicant);
-                }
+            String []parts=line.split(";");
+            int id=Integer.parseInt(parts[0]);
+            String name=parts[1];
+            double gpa=Double.parseDouble(parts[2]);
+            String programmeCode=parts[parts.length-1];
+
+            StudyProgramme studyProgramme=studyProgrammes.stream().filter(s->s.getCode().equals(programmeCode)).findFirst().orElse(null);
+            Applicant applicant=new Applicant(id,name,gpa,studyProgramme);
+
+            String[]rest=Arrays.copyOfRange(parts,3,parts.length-1);
+            for (int i=0;i<rest.length;i++){
+                String sName=rest[i];
+                int grade=Integer.parseInt(rest[i+1]);
+                i++;
+                applicant.addSubjectAndGrade(sName,grade);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+            assert studyProgramme != null;
+            studyProgramme.addApplicant(applicant);
+            enrollments.add(new Enrollment(applicant,studyProgramme));
+
         }
+
         return enrollments;
+
     }
 }
 
 public class EnrollmentsTest {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         Faculty finki = new Faculty("FINKI");
         finki.addSubject("Mother Tongue");
         finki.addSubject("Mathematics");
@@ -281,4 +375,3 @@ public class EnrollmentsTest {
 
 
 }
-
